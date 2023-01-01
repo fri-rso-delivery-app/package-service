@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     api_trace_url: str = 'http://localhost:4317'
 
     # other services
-    auth_server: str = 'http://app-auth:8080'
+    auth_server: str = 'http://localhost:8080/api/v1/auth'
+    maps_server: str = 'http://localhost:8080/api/v1/maps'
 
     # auth settings
     api_login_url: str = 'http://localhost:8001/jwt/token'
