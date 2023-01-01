@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 from fastapi import APIRouter, Depends, Header
 
 from app.models.jwt import *
@@ -39,3 +40,74 @@ async def list_tasks(
     logging.info('Retreiving user data from the auth server.')
 
     return user_data
+
+#
+# Primer klica za 
+#
+
+import httpx
+from opentelemetry.propagate import inject
+
+from auth import credentials_exception
+from app.models.examples import DistanceList
+
+async def get_distances(
+    auth_header: str,
+    maps_server_url: str,
+    coords: list[str],
+    mode: Literal[
+        'driving',
+        'walking',
+        'bicycling',
+        'transit'
+    ],
+):
+    # create headers
+    headers = { 'Authorization': auth_header }
+
+    # inject trace info to header
+    inject(headers)
+
+    qparams = {
+        'coords': coords,
+        'mode': mode,
+    }
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f'{maps_server_url}/distances/points_list',
+            headers=headers,
+            params = qparams,
+        )
+
+        if response.status_code == 200:
+            distances_str = response.read()
+            return DistanceList.parse_raw(distances_str)
+        if response.status_code == 401:
+            raise credentials_exception
+
+    raise Exception('Exception while communicating with maps server')
+
+
+from app.config import Settings, get_settings
+
+# primer funkcije
+@router.get('/get_path', response_model=UserRead)
+async def get_path(
+    token: JWTokenData = Depends(get_current_user),
+    # to forward token
+    authorization: str | None = Header(default=None, include_in_schema=False),
+    # site settings
+    settings: Settings = Depends(get_settings),
+):
+
+    distances = await get_distances(
+        auth_header=authorization,
+        maps_server_url=settings.maps_server,
+        mode='driving',
+        coords=[
+            #TODO: pridobi seznam tock
+        ]
+    )
+
+    # sedaj imas seznam v "distances"
