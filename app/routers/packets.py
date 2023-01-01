@@ -28,12 +28,13 @@ router = APIRouter(
 )
 
 
-async def get_packet(
-    id: str | UUID,
-    # enforce ownership + auth
-    token: JWTokenData = Depends(get_current_user),
-) -> Packet:
-    packet = await table.find_one({'_id': str(id), 'user_id': str(token.user_id)})
+async def get_packet(id: str | UUID, token: JWTokenData = Depends(get_current_user), user_data: UserRead = Depends(get_current_user_data)) -> Packet:
+    if user_data.is_delivery_person:
+        packet = await table.find_one({'_id': str(id)})
+
+    else:
+        packet = await table.find_one({'_id': str(id), 'user_id': str(token.user_id)})
+
     if not packet: raise HTTPException(status_code=404, detail=f'Packet not found')
 
     return Packet(**packet)
