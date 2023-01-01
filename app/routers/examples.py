@@ -48,8 +48,9 @@ async def list_tasks(
 import httpx
 from opentelemetry.propagate import inject
 
-from auth import credentials_exception
+from app.auth import credentials_exception
 from app.models.examples import DistanceList
+
 
 async def get_distances(
     auth_header: str,
@@ -90,6 +91,7 @@ async def get_distances(
 
 
 from app.config import Settings, get_settings
+
 
 # primer funkcije
 @router.get('/get_path', response_model=UserRead)

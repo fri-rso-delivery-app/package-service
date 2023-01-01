@@ -8,7 +8,7 @@ from ._common import CommonBase, CommonBaseRead
 # common (base, read, write)
 class PacketBase(BaseModel):
     delivery_destination: str
-    store_id: UUID
+    store_name: str
     description: str | None = None
 
 
