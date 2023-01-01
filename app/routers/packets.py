@@ -168,19 +168,6 @@ async def read_packet(packet: Packet = Depends(get_packet)):
     return packet
 
 
-@router.patch('/{id}', response_model=PacketRead)
-async def update_packet(*,
-    token: JWTokenData = Depends(get_current_user),
-    packet: Packet = Depends(get_packet),
-    packet_update: PacketUpdate
-):
-    # update packet
-    packet_update = packet_update.dict(exclude_unset=True)
-    await table.update_one({'_id': str(packet.id)}, {'$set': packet_update})
-    
-    return await get_packet(packet.id, token)
-
-
 @router.delete('/{id}')
 async def delete_packet(packet: Packet = Depends(get_packet),):
     await table.delete_one({'_id': str(packet.id)})
