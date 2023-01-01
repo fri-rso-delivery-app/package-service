@@ -42,7 +42,7 @@ async def create_packet(*, packet: Packet, token: JWTokenData = Depends(get_curr
 
 
 @router.get("/request_route")
-async def request_route(store: str, time_in_hours: float, user_data: UserRead = Depends(get_current_user_data)):
+async def request_route(store_id: UUID, time_in_hours: float, user_data: UserRead = Depends(get_current_user_data)):
     if user_data.is_customer:
         raise Exception("Not Authorised to request delivery routes")
     # create route

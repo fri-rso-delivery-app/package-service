@@ -7,7 +7,7 @@ from ._common import CommonBase, CommonBaseRead
 
 # common (base, read, write)
 class StoreBase(BaseModel):
-    name: str
+    store_id: UUID
     location: str
 
 
