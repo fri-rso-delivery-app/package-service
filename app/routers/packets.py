@@ -16,10 +16,10 @@ from app.auth import credentials_exception
 from app.models.examples import DistanceList
 
 from app.config import Settings, get_settings
-from .stores import stores_table
+from app.routers.stores import table as stores_table
 
 TABLE = 'packets'
-packets_table = db[TABLE]
+table = db[TABLE]
 
 
 router = APIRouter(
@@ -33,7 +33,7 @@ async def get_packet(
     # enforce ownership + auth
     token: JWTokenData = Depends(get_current_user),
 ) -> Packet:
-    packet = await packets_table.find_one({'_id': str(id), 'user_id': str(token.user_id)})
+    packet = await table.find_one({'_id': str(id), 'user_id': str(token.user_id)})
     if not packet: raise HTTPException(status_code=404, detail=f'Packet not found')
 
     return Packet(**packet)
@@ -45,7 +45,7 @@ async def create_packet(*, packet: Packet, token: JWTokenData = Depends(get_curr
         raise Exception("Not Authorised to create packets")
     # create
     packet_db = jsonable_encoder(Packet(**packet.dict(), user_id=token.user_id))
-    new_packet = await packets_table.insert_one(packet_db)
+    new_packet = await table.insert_one(packet_db)
     created_packet = await get_packet(new_packet.inserted_id, token)
     
     return created_packet
@@ -63,7 +63,7 @@ async def request_route(store_id: UUID,
         raise Exception("Not Authorised to request delivery routes")
 
     # get all packets from store
-    list_of_items = await packets_table.find({"_id": str(store_id)}).to_list(1000)
+    list_of_items = await table.find({"_id": str(store_id)}).to_list(1000)
 
     # get all locations of packets
     coordinates_of_items = [item.location for item in list_of_items]
@@ -119,10 +119,10 @@ async def get_distances(auth_header: str, maps_server_url: str, coords: list[str
 async def list_packets(token: JWTokenData = Depends(get_current_user), user_data: UserRead = Depends(get_current_user_data)):
     # customer can see their packages
     if user_data.is_customer:
-        return await packets_table.find({'user_id': str(token.user_id)}).to_list(1000)
+        return await table.find({'user_id': str(token.user_id)}).to_list(1000)
     # delivery person can see all packages
     if user_data.is_delivery_person:
-        return await packets_table.find().to_list(1000)
+        return await table.find().to_list(1000)
 
 
 @router.get('/{id}', response_model=PacketRead)
@@ -138,13 +138,13 @@ async def update_packet(*,
 ):
     # update packet
     packet_update = packet_update.dict(exclude_unset=True)
-    await packets_table.update_one({'_id': str(packet.id)}, {'$set': packet_update})
+    await table.update_one({'_id': str(packet.id)}, {'$set': packet_update})
     
     return await get_packet(packet.id, token)
 
 
 @router.delete('/{id}')
 async def delete_packet(packet: Packet = Depends(get_packet),):
-    await packets_table.delete_one({'_id': str(packet.id)})
+    await table.delete_one({'_id': str(packet.id)})
 
     return {'ok': True}
