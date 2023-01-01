@@ -18,7 +18,7 @@ class Packet(CommonBase, PacketBase):
 
 
 # create-only overrides
-class PacketCreate(Packet):
+class PacketCreate(PacketBase):
     pass
 
 
