@@ -43,7 +43,7 @@ async def get_packet(id: str | UUID, token: JWTokenData = Depends(get_current_us
 
 
 @router.post('/', response_model=Packet)
-async def create_packet(*, packet: Packet, token: JWTokenData = Depends(get_current_user), user_data: UserRead = Depends(get_current_user_data)):
+async def create_packet(*, packet: PacketCreate, token: JWTokenData = Depends(get_current_user), user_data: UserRead = Depends(get_current_user_data)):
     if not user_data.is_customer:
         raise Exception("Not Authorised to create packets")
     # create
@@ -92,22 +92,22 @@ async def request_route(store_id: UUID,
     # dictionary of distances
     distances_dict = {}
     for item in all_distances:
-        loc1 = item.p1
-        loc2 = item.p2
+        location1 = item.p1
+        location2 = item.p2
         duration = item.duration
-        distances_dict[(loc1, loc2)] = duration
+        distances_dict[(location1, location2)] = duration
 
-    coodrinates_of_items2 = []
+    coordinates_of_items2 = []
 
     for coord in coordinates_of_items:
         distance = distances_dict[(store_coordinates, coord)]
         if distance < time_in_minutes:
-            coodrinates_of_items2.append(coord)
+            coordinates_of_items2.append(coord)
 
     options = []
 
-    for L in range(len(coodrinates_of_items2) + 1):
-        for subset in itertools.combinations(coodrinates_of_items2, L):
+    for L in range(len(coordinates_of_items2) + 1):
+        for subset in itertools.combinations(coordinates_of_items2, L):
             subset = [store_coordinates] + subset
             length = 0
             for c1, c2 in zip(subset, subset[1:]):
