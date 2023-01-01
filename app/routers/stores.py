@@ -43,7 +43,7 @@ async def create_store(*, store: StoreCreate, user_data: UserRead = Depends(get_
 async def list_stores(user_data: UserRead = Depends(get_current_user_data)):
     if not user_data.is_delivery_person:
         raise Exception("Not Authorised to create stores")
-    return await table.find().pretty().to_list(1000)
+    return await table.find().to_list(1000)
 
 
 @router.get('/{id}', response_model=StoreRead)
