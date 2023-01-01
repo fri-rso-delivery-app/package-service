@@ -22,7 +22,8 @@ async def get_store(id: str | UUID, user_data: UserRead = Depends(get_current_us
     if not user_data.is_delivery_person:
         raise Exception("Not Authorised to see stores")
     store = await table.find_one({'_id': str(id)})
-    if not store: raise HTTPException(status_code=404, detail=f'Store not found')
+    if not store:
+        raise HTTPException(status_code=404, detail=f'Store not found')
 
     return Store(**store)
 
@@ -34,7 +35,7 @@ async def create_store(*, store: StoreCreate, user_data: UserRead = Depends(get_
     # create
     store_db = jsonable_encoder(Store(**store.dict(), user_id=token.user_id))
     new_store = await table.insert_one(store_db)
-    created_store = await get_store(new_store.inserted_id, token)
+    created_store = await get_store(new_store.inserted_id, user_data)
     
     return created_store
 
@@ -52,16 +53,12 @@ async def read_store(store: Store = Depends(get_store)):
 
 
 @router.patch('/{id}', response_model=StoreRead)
-async def update_store(*,
-    token: JWTokenData = Depends(get_current_user),
-    store: Store = Depends(get_store),
-    store_update: StoreUpdate
-):
+async def update_store(*, user_data: UserRead = Depends(get_current_user_data), store: Store = Depends(get_store), store_update: StoreUpdate):
     # update store
     store_update = store_update.dict(exclude_unset=True)
     await table.update_one({'_id': str(store.id)}, {'$set': store_update})
     
-    return await get_store(store.id, token)
+    return await get_store(store.id, user_data)
 
 
 @router.delete('/{id}')

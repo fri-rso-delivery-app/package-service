@@ -54,7 +54,7 @@ async def create_packet(*, packet: Packet, token: JWTokenData = Depends(get_curr
 
 @router.get("/request_route", response_model=UserRead)
 async def request_route(store_id: UUID,
-                        time_in_hours: float,
+                        time_in_minutes: float,
                         user_data: UserRead = Depends(get_current_user_data),
                         token: JWTokenData = Depends(get_current_user),
                         authorization: str | None = Header(default=None, include_in_schema=False),
@@ -74,17 +74,25 @@ async def request_route(store_id: UUID,
     coordinates_of_items_and_store = store_coordinates + coordinates_of_items
 
     # get distances
-    distances = await get_distances(
+    all_distances = await get_distances(
         auth_header=authorization,
         maps_server_url=settings.maps_server,
         mode='driving',
-        coords=coordinates_of_items
+        coords=coordinates_of_items_and_store
     )
 
+    distances_dict = {}
+    for item in all_distances:
+        loc1 = item["p1"]
+        loc2 = item["p2"]
+        duration = item["duration"]
+        distances_dict[str(loc1, loc2)] = duration
+
     # compute route
+    find_routes(distances_dict, time_in_minutes)
 
 
-def find_routes(array_of_distances, time):
+def find_routes(distances, time):
     pass
 
 
