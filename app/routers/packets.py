@@ -1,6 +1,6 @@
 from typing import List
 from typing import Literal
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from fastapi.encoders import jsonable_encoder
 
 from app.db import db
@@ -17,6 +17,8 @@ from app.models.examples import DistanceList
 
 from app.config import Settings, get_settings
 from app.routers.stores import table as stores_table
+
+import itertools
 
 TABLE = 'packets'
 table = db[TABLE]
@@ -55,6 +57,12 @@ async def create_packet(*, packet: Packet, token: JWTokenData = Depends(get_curr
 @router.get("/request_route", response_model=UserRead)
 async def request_route(store_id: UUID,
                         time_in_minutes: float,
+                        mode: Literal[
+                                'driving',
+                                'walking',
+                                'bicycling',
+                                'transit'
+                            ] = Query(default='driving'),
                         user_data: UserRead = Depends(get_current_user_data),
                         token: JWTokenData = Depends(get_current_user),
                         authorization: str | None = Header(default=None, include_in_schema=False),
@@ -64,10 +72,10 @@ async def request_route(store_id: UUID,
         raise Exception("Not Authorised to request delivery routes")
 
     # get all packets from store
-    list_of_items = await table.find({"_id": str(store_id)}).to_list(1000)
+    list_of_items = await table.find({"store_id": str(store_id)}).to_list(1000)
 
     # get all locations of packets
-    coordinates_of_items = [item.location for item in list_of_items]
+    coordinates_of_items = [item.delivery_destination for item in list_of_items]
 
     # add initial store location
     store_coordinates = await stores_table.findOne({"_id": str(store_id)}, "location").to_list(1)
@@ -77,23 +85,44 @@ async def request_route(store_id: UUID,
     all_distances = await get_distances(
         auth_header=authorization,
         maps_server_url=settings.maps_server,
-        mode='driving',
+        mode=mode,
         coords=coordinates_of_items_and_store
     )
 
+    # dictionary of distances
     distances_dict = {}
     for item in all_distances:
-        loc1 = item["p1"]
-        loc2 = item["p2"]
-        duration = item["duration"]
-        distances_dict[str(loc1, loc2)] = duration
+        loc1 = item.p1
+        loc2 = item.p2
+        duration = item.duration
+        distances_dict[(loc1, loc2)] = duration
 
-    # compute route
-    find_routes(distances_dict, time_in_minutes)
+    coodrinates_of_items2 = []
 
+    for coord in coordinates_of_items:
+        distance = distances_dict[(store_coordinates, coord)]
+        if distance < time_in_minutes:
+            coodrinates_of_items2.append(coord)
 
-def find_routes(distances, time):
-    pass
+    options = []
+
+    for L in range(len(coodrinates_of_items2) + 1):
+        for subset in itertools.combinations(coodrinates_of_items2, L):
+            subset = [store_coordinates] + subset
+            length = 0
+            for c1, c2 in zip(subset, subset[1:]):
+                length += distances_dict[(c1, c2)]
+
+            if distance < time_in_minutes:
+                options.append((subset, length))
+
+    selected, _ = max(options, key=lambda x: (len(x[0]), x[1]))
+
+    selected.pop(0)
+
+    result = []
+    for coord in selected:
+        result.append(await table.find({"delivery_destination": str(coord)}).first())
 
 
 async def get_distances(auth_header: str, maps_server_url: str, coords: list[str], mode: Literal['driving', 'walking', 'bicycling', 'transit'],):
