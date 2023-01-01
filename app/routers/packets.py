@@ -16,7 +16,7 @@ from app.auth import credentials_exception
 from app.models.examples import DistanceList
 
 from app.config import Settings, get_settings
-from stores import stores_table
+from .stores import stores_table
 
 TABLE = 'packets'
 packets_table = db[TABLE]
