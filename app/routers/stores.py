@@ -5,8 +5,8 @@ from fastapi.encoders import jsonable_encoder
 from app.db import db
 from app.models.stores import *
 from app.models.jwt import *
-from app.auth import get_current_user
-
+from app.auth import get_current_user, get_current_user_data
+from app.models.users import UserRead
 
 TABLE = 'stores'
 table = db[TABLE]
@@ -18,19 +18,19 @@ router = APIRouter(
 )
 
 
-async def get_store(
-    id: str | UUID,
-    # enforce ownership + auth
-    token: JWTokenData = Depends(get_current_user),
-) -> Store:
-    store = await table.find_one({'_id': str(id), 'user_id': str(token.user_id)})
+async def get_store(id: str | UUID, user_data: UserRead = Depends(get_current_user_data)) -> Store:
+    if user_data.is_customer:
+        raise Exception("Not Authorised to see stores")
+    store = await table.find_one({'_id': str(id)})
     if not store: raise HTTPException(status_code=404, detail=f'Store not found')
 
     return Store(**store)
 
 
 @router.post('/', response_model=StoreRead)
-async def create_store(*, store: StoreCreate, token: JWTokenData = Depends(get_current_user), ):
+async def create_store(*, store: StoreCreate, user_data: UserRead = Depends(get_current_user_data), token: JWTokenData = Depends(get_current_user)):
+    if user_data.is_customer:
+        raise Exception("Not Authorised to create stores")
     # create
     store_db = jsonable_encoder(Store(**store.dict(), user_id=token.user_id))
     new_store = await table.insert_one(store_db)
@@ -40,8 +40,10 @@ async def create_store(*, store: StoreCreate, token: JWTokenData = Depends(get_c
 
 
 @router.get('/', response_model=List[StoreRead])
-async def list_stores(token: JWTokenData = Depends(get_current_user)):
-    return await table.find({'user_id': str(token.user_id)}).to_list(1000)
+async def list_stores(user_data: UserRead = Depends(get_current_user_data)):
+    if user_data.is_customer:
+        raise Exception("Not Authorised to create stores")
+    return await table.find().pretty().to_list(1000)
 
 
 @router.get('/{id}', response_model=StoreRead)
