@@ -49,7 +49,7 @@ async def create_packet(*, packet: PacketCreate, token: JWTokenData = Depends(ge
     # create
     packet_db = jsonable_encoder(Packet(**packet.dict(), user_id=token.user_id))
     new_packet = await table.insert_one(packet_db)
-    created_packet = await get_packet(new_packet.inserted_id, token)
+    created_packet = await get_packet(new_packet.inserted_id, token, user_data)
     
     return created_packet
 
