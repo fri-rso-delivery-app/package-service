@@ -53,7 +53,7 @@ async def get_current_user_data(
     settings: Settings = Depends(get_settings),
 ) -> UserRead:
     # create headers
-    headers = { 'Authorization': authorization }
+    headers = {'Authorization': authorization}
 
     # inject trace info to header
     inject(headers)

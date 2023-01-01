@@ -4,9 +4,6 @@ from fastapi.responses import HTMLResponse
 
 from app.config import Settings, get_settings
 
-from enum import Enum
-from pydantic import BaseModel
-
 settings: Settings = get_settings()
 
 app = FastAPI(
@@ -31,48 +28,13 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
-# tasks router
-#from app.routers import tasks
-#app.include_router(tasks.router)
+# stores router
+from app.routers import stores
+app.include_router(stores.router)
 
-# examples router
-#from app.routers import examples
-#app.include_router(examples.router)
-
-
-class Store(BaseModel):
-    name: str
-    location: str
-
-
-class Stores(str, Enum):
-    store1 = "store1"
-    store2 = "store2"
-    store3 = "store3"
-
-
-class Packet(BaseModel):
-    store: Stores
-    delivery_destination: str
-    description: str | None = None
-
-    class Config:
-        use_enum_values = True
-
-
-@app.post("/user/{user_id}/request_delivery")
-async def create_packet(user_id: str, packet: Packet):
-    return user_id, packet
-
-
-@app.get("/delivery/{deliverer_id}/request_route")
-async def request_route(deliverer_id: str, store: Stores, time_in_hours: float):
-    return deliverer_id, store, time_in_hours
-
-
-@app.post("/create_store")
-async def root(new_store: Store):
-    return new_store
+# packets router
+from app.routers import packets
+app.include_router(packets.router)
 
 
 @app.get('/', response_class=HTMLResponse)
