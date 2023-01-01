@@ -37,7 +37,8 @@ async def get_packet(id: str | UUID, token: JWTokenData = Depends(get_current_us
     else:
         packet = await table.find_one({'_id': str(id), 'user_id': str(token.user_id)})
 
-    if not packet: raise HTTPException(status_code=404, detail=f'Packet not found')
+    if not packet:
+        raise HTTPException(status_code=404, detail=f'Packet not found')
 
     return Packet(**packet)
 
@@ -54,7 +55,7 @@ async def create_packet(*, packet: PacketCreate, token: JWTokenData = Depends(ge
     return created_packet
 
 
-@router.get("/request_route", response_model=UserRead)
+@router.get("/request_route", response_model=List[PacketRead])
 async def request_route(store_id: UUID,
                         time_in_minutes: float,
                         mode: Literal[
@@ -123,6 +124,8 @@ async def request_route(store_id: UUID,
     result = []
     for coord in selected:
         result.append(await table.find({"delivery_destination": str(coord)}).first())
+
+    return result
 
 
 async def get_distances(auth_header: str, maps_server_url: str, coords: list[str], mode: Literal['driving', 'walking', 'bicycling', 'transit'],):
