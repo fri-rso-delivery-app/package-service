@@ -169,6 +169,9 @@ async def list_packets(token: JWTokenData = Depends(get_current_user), user_data
     # customer can see their packages
     if user_data.is_customer:
         return await table.find({'user_id': str(token.user_id)}).to_list(1000)
+    
+    # default return (no user role)
+    return []
 
 
 @router.get('/{id}', response_model=PacketRead)
