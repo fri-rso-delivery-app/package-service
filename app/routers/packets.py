@@ -57,7 +57,7 @@ async def create_packet(*, packet: PacketCreate, token: JWTokenData = Depends(ge
 
 @router.get("/request_route", response_model=List[PacketRead])
 async def request_route(store_id: UUID,
-                        time_in_minutes: float,
+                        time_in_minutes: int,
                         mode: Literal[
                                 'driving',
                                 'walking',
@@ -67,7 +67,10 @@ async def request_route(store_id: UUID,
                         user_data: UserRead = Depends(get_current_user_data),
                         token: JWTokenData = Depends(get_current_user),
                         authorization: str | None = Header(default=None, include_in_schema=False),
-                        settings: Settings = Depends(get_settings)):
+                        settings: Settings = Depends(get_settings)
+):
+    time_in_seconds = time_in_minutes * 60
+    
     # make sure only delivery people can get routes
     if not user_data.is_delivery_person:
         raise Exception("Not Authorised to request delivery routes")
@@ -79,7 +82,7 @@ async def request_route(store_id: UUID,
     coordinates_of_items = [item.delivery_destination for item in list_of_items]
 
     # add initial store location
-    store_coordinates = await stores_table.findOne({"_id": str(store_id)}, "location").to_list(1)
+    store_coordinates = await stores_table.find({"_id": str(store_id)}, "location").first()
     coordinates_of_items_and_store = store_coordinates + coordinates_of_items
 
     # get distances
@@ -102,7 +105,7 @@ async def request_route(store_id: UUID,
 
     for coord in coordinates_of_items:
         distance = distances_dict[(store_coordinates, coord)]
-        if distance < time_in_minutes:
+        if distance < time_in_seconds:
             coordinates_of_items2.append(coord)
 
     options = []
@@ -114,7 +117,7 @@ async def request_route(store_id: UUID,
             for c1, c2 in zip(subset, subset[1:]):
                 length += distances_dict[(c1, c2)]
 
-            if distance < time_in_minutes:
+            if distance < time_in_seconds:
                 options.append((subset, length))
 
     selected, _ = max(options, key=lambda x: (len(x[0]), x[1]))
