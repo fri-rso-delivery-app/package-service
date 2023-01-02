@@ -18,9 +18,7 @@ router = APIRouter(
 )
 
 
-async def get_store(id: str | UUID, user_data: UserRead = Depends(get_current_user_data)) -> Store:
-    if not user_data.is_delivery_person:
-        raise Exception("Not Authorised to see stores")
+async def get_store(id: str | UUID, user_data: UserRead = Depends(get_current_user_data)) -> Store:    
     store = await table.find_one({'_id': str(id)})
     if not store:
         raise HTTPException(status_code=404, detail=f'Store not found')
@@ -29,9 +27,13 @@ async def get_store(id: str | UUID, user_data: UserRead = Depends(get_current_us
 
 
 @router.post('/', response_model=StoreRead)
-async def create_store(*, store: StoreCreate, user_data: UserRead = Depends(get_current_user_data), token: JWTokenData = Depends(get_current_user)):
+async def create_store(*,
+    store: StoreCreate,
+    user_data: UserRead = Depends(get_current_user_data),
+    token: JWTokenData = Depends(get_current_user)
+):
     if not user_data.is_delivery_person:
-        raise Exception("Not Authorised to create stores")
+        raise HTTPException(status=422, detail="Not Authorised to create stores")
     # create
     store_db = jsonable_encoder(Store(**store.dict(), user_id=token.user_id))
     new_store = await table.insert_one(store_db)
@@ -42,8 +44,6 @@ async def create_store(*, store: StoreCreate, user_data: UserRead = Depends(get_
 
 @router.get('/', response_model=List[StoreRead])
 async def list_stores(user_data: UserRead = Depends(get_current_user_data)):
-    if not user_data.is_delivery_person:
-        raise Exception("Not Authorised to create stores")
     return await table.find().to_list(1000)
 
 
@@ -62,7 +62,13 @@ async def update_store(*, user_data: UserRead = Depends(get_current_user_data), 
 
 
 @router.delete('/{id}')
-async def delete_store(store: Store = Depends(get_store),):
+async def delete_store(
+    store: Store = Depends(get_store),
+    user_data: UserRead = Depends(get_current_user_data), token: JWTokenData = Depends(get_current_user),
+):
+    if not user_data.is_delivery_person:
+        raise HTTPException(status=422, detail="Not Authorised to delete stores")
+
     await table.delete_one({'_id': str(store.id)})
 
     return {'ok': True}
