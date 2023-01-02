@@ -83,14 +83,13 @@ async def request_route(store_id: UUID,
 
     # add initial store location
     store_coordinates = await stores_table.find_one({"_id": str(store_id)}, "location")
-    coordinates_of_items_and_store = store_coordinates + coordinates_of_items
 
     # get distances
     all_distances = await get_distances(
         auth_header=authorization,
         maps_server_url=settings.maps_server,
         mode=mode,
-        coords=coordinates_of_items_and_store
+        coords=[store_coordinates]+coordinates_of_items
     )
 
     # dictionary of distances
@@ -107,11 +106,13 @@ async def request_route(store_id: UUID,
         distance = distances_dict[(store_coordinates, coord)]
         if distance < time_in_seconds:
             coordinates_of_items2.append(coord)
+    
+    coordinates_of_items = coordinates_of_items2
 
     options = []
 
-    for L in range(len(coordinates_of_items2) + 1):
-        for subset in itertools.combinations(coordinates_of_items2, L):
+    for L in range(len(coordinates_of_items) + 1):
+        for subset in itertools.combinations(coordinates_of_items, L):
             subset = [store_coordinates] + subset
             length = 0
             for c1, c2 in zip(subset, subset[1:]):
