@@ -14,7 +14,7 @@ on:
     branches: [ "main" ]
 
 env:
-  IMAGE_NAME: delivery-todo-example
+  IMAGE_NAME: delivery-package
 
 
 jobs:
