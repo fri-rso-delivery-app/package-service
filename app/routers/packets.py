@@ -78,11 +78,13 @@ async def request_route(store_id: UUID,
     # get all packets from store
     list_of_items = await table.find({"store_id": str(store_id)}).to_list(1000)
 
+    if len(list_of_items) < 1: return []
+
     # get all locations of packets
-    coordinates_of_items = [item.delivery_destination for item in list_of_items]
+    coordinates_of_items = [item['delivery_destination'] for item in list_of_items]
 
     # add initial store location
-    store_coordinates = await stores_table.find_one({"_id": str(store_id)}, "location")
+    store_coordinates = (await stores_table.find_one({"_id": str(store_id)}))['location']
 
     # get distances
     all_distances = await get_distances(
@@ -113,17 +115,15 @@ async def request_route(store_id: UUID,
 
     for L in range(len(coordinates_of_items) + 1):
         for subset in itertools.combinations(coordinates_of_items, L):
-            subset = [store_coordinates] + subset
+            path = (store_coordinates,) + subset
             length = 0
-            for c1, c2 in zip(subset, subset[1:]):
+            for c1, c2 in zip(path, path[1:]):
                 length += distances_dict[(c1, c2)]
 
             if distance < time_in_seconds:
                 options.append((subset, length))
 
     selected, _ = max(options, key=lambda x: (len(x[0]), x[1]))
-
-    selected.pop(0)
 
     result = []
     for coord in selected:
@@ -153,7 +153,7 @@ async def get_distances(auth_header: str, maps_server_url: str, coords: list[str
 
         if response.status_code == 200:
             distances_str = response.read()
-            return DistanceList.parse_raw(distances_str)
+            return (DistanceList.parse_raw(distances_str)).__root__
         if response.status_code == 401:
             raise credentials_exception
 
@@ -162,12 +162,13 @@ async def get_distances(auth_header: str, maps_server_url: str, coords: list[str
 
 @router.get('/', response_model=List[PacketRead])
 async def list_packets(token: JWTokenData = Depends(get_current_user), user_data: UserRead = Depends(get_current_user_data)):
-    # customer can see their packages
-    if user_data.is_customer:
-        return await table.find({'user_id': str(token.user_id)}).to_list(1000)
     # delivery person can see all packages
     if user_data.is_delivery_person:
         return await table.find().to_list(1000)
+
+    # customer can see their packages
+    if user_data.is_customer:
+        return await table.find({'user_id': str(token.user_id)}).to_list(1000)
 
 
 @router.get('/{id}', response_model=PacketRead)

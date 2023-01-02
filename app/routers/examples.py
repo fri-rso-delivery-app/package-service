@@ -83,7 +83,7 @@ async def get_distances(
 
         if response.status_code == 200:
             distances_str = response.read()
-            return DistanceList.parse_raw(distances_str)
+            return (DistanceList.parse_raw(distances_str)).__root__
         if response.status_code == 401:
             raise credentials_exception
 
