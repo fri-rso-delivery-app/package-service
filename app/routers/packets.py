@@ -82,7 +82,7 @@ async def request_route(store_id: UUID,
     coordinates_of_items = [item.delivery_destination for item in list_of_items]
 
     # add initial store location
-    store_coordinates = await stores_table.find({"_id": str(store_id)}, "location").first()
+    store_coordinates = await stores_table.find_one({"_id": str(store_id)}, "location")
     coordinates_of_items_and_store = store_coordinates + coordinates_of_items
 
     # get distances
@@ -126,7 +126,7 @@ async def request_route(store_id: UUID,
 
     result = []
     for coord in selected:
-        result.append(await table.find({"delivery_destination": str(coord)}).first())
+        result.append(await table.find_one({"delivery_destination": str(coord)}))
 
     return result
 
